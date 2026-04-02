@@ -140,6 +140,30 @@
             hyphens: auto;
         }
         
+        .warehouse-coefficient {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 9px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .warehouse-currency {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 8px;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        
         .warehouse:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -384,12 +408,51 @@
             }
         }
         
-        // Transform API data to our format
-        function transformWarehouseData(apiData) {
+        async function fetchCompanies() {
+            if (!currentUserKey) {
+                throw new Error('Not authenticated');
+            }
+            
+            const url = `${BASE_URL}/admin/fulfillment-companies`;
+            const headers = {
+                "accept": "application/json, text/plain, */*",
+                "origin": "https://admin.nextlevel.delivery",
+                "x-user-key": currentUserKey
+            };
+            
+            try {
+                const response = await fetch(url, { headers });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return { success: true, data: data };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // Transform API data to our format with company details
+        function transformWarehouseData(apiData, companiesData) {
+            // Create a map of companies by ID for easy lookup
+            const companiesMap = {};
+            companiesData.forEach(company => {
+                companiesMap[company.id] = company;
+            });
+            
             return apiData.map(warehouse => {
                 const latestStorage = warehouse.storages && warehouse.storages.length > 0 
                     ? parseFloat(warehouse.storages[0].storage) 
                     : 0;
+                
+                // Find associated companies
+                const associatedCompanies = warehouse.companies || [];
+                const companyDetails = associatedCompanies.map(comp => companiesMap[comp.id]).filter(Boolean);
+                
+                // Get primary company details (first one)
+                const primaryCompany = companyDetails[0];
                 
                 return {
                     name: warehouse.name,
@@ -399,7 +462,23 @@
                     email: warehouse.email,
                     isActive: warehouse.is_active,
                     isVirtual: warehouse.is_virtual,
-                    companies: warehouse.companies || [],
+                    companies: companyDetails,
+                    primaryCompany: primaryCompany,
+                    storageCoefficient: primaryCompany?.config_storage_volume_coefficient || 1.5,
+                    tariffCurrency: primaryCompany?.tariff_currency || 'EUR',
+                    salesId: primaryCompany?.sales_id,
+                    contract: primaryCompany?.contract,
+                    uid: primaryCompany?.uid,
+                    owner: primaryCompany?.owner,
+                    place: primaryCompany?.place,
+                    address: primaryCompany?.address,
+                    phoneOwner: primaryCompany?.phone_owner,
+                    emailOwner: primaryCompany?.email_owner,
+                    website: primaryCompany?.website,
+                    contractDate: primaryCompany?.contract_date,
+                    isActiveCompany: primaryCompany?.is_active,
+                    vatValid: primaryCompany?.vat_valid,
+                    autoCreateAwb: primaryCompany?.auto_create_awb,
                     raw: warehouse
                 };
             });
@@ -435,17 +514,55 @@
             div.style.height = `${size.height}px`;
             div.style.gridColumn = `span ${Math.ceil(size.width / 120)}`;
             
-            const shortName = warehouse.name.length > 30 ? 
-                warehouse.name.substring(0, 27) + '...' : warehouse.name;
+            const shortName = warehouse.name.length > 25 ? 
+                warehouse.name.substring(0, 22) + '...' : warehouse.name;
+            
+            // Create detailed tooltip content
+            const tooltipContent = [];
+            tooltipContent.push(`Warehouse: ${warehouse.name}`);
+            tooltipContent.push(`Storage: ${warehouse.storage.toFixed(3)} m³`);
+            tooltipContent.push(`Hub: ${warehouse.hub}`);
+            tooltipContent.push(`Email: ${warehouse.email}`);
+            tooltipContent.push(`Active: ${warehouse.isActive ? 'Yes' : 'No'}`);
+            tooltipContent.push(`Virtual: ${warehouse.isVirtual ? 'Yes' : 'No'}`);
+            
+            if (warehouse.primaryCompany) {
+                tooltipContent.push(`\n--- Company Details ---`);
+                tooltipContent.push(`Company: ${warehouse.primaryCompany.name}`);
+                tooltipContent.push(`UID: ${warehouse.uid || 'N/A'}`);
+                tooltipContent.push(`Contract: ${warehouse.contract || 'N/A'}`);
+                tooltipContent.push(`Owner: ${warehouse.owner || 'N/A'}`);
+                tooltipContent.push(`Place: ${warehouse.place || 'N/A'}`);
+                tooltipContent.push(`Address: ${warehouse.address || 'N/A'}`);
+                tooltipContent.push(`Phone: ${warehouse.phoneOwner || 'N/A'}`);
+                tooltipContent.push(`Email: ${warehouse.emailOwner || 'N/A'}`);
+                tooltipContent.push(`Website: ${warehouse.website || 'N/A'}`);
+                tooltipContent.push(`Contract Date: ${warehouse.contractDate || 'N/A'}`);
+                tooltipContent.push(`Active: ${warehouse.isActiveCompany ? 'Yes' : 'No'}`);
+                tooltipContent.push(`VAT Valid: ${warehouse.vatValid ? 'Yes' : 'No'}`);
+                tooltipContent.push(`Auto AWB: ${warehouse.autoCreateAwb ? 'Yes' : 'No'}`);
+                tooltipContent.push(`Storage Coefficient: ${warehouse.storageCoefficient}`);
+                tooltipContent.push(`Tariff Currency: ${warehouse.tariffCurrency}`);
+                tooltipContent.push(`Sales ID: ${warehouse.salesId || 'N/A'}`);
+            }
+            
+            if (warehouse.companies && warehouse.companies.length > 1) {
+                tooltipContent.push(`\n--- All Companies (${warehouse.companies.length}) ---`);
+                warehouse.companies.forEach((comp, idx) => {
+                    tooltipContent.push(`${idx + 1}. ${comp.name} (${comp.uid})`);
+                });
+            }
             
             div.innerHTML = `
                 <div>
                     <div style="font-weight: bold; margin-bottom: 4px;">${shortName}</div>
                     <div class="storage-info">${warehouse.storage.toFixed(3)} m³</div>
                 </div>
+                <div class="warehouse-coefficient">×${warehouse.storageCoefficient}</div>
+                <div class="warehouse-currency">${warehouse.tariffCurrency}</div>
             `;
             
-            div.title = `${warehouse.name}\nStorage: ${warehouse.storage.toFixed(3)} m³`;
+            div.title = tooltipContent.join('\n');
             
             return div;
         }
@@ -494,13 +611,22 @@
                     return;
                 }
                 
-                // Transform and update data
-                warehouseData = transformWarehouseData(warehouseResult.data);
+                setStatus('Fetching company data...', 'loading');
+                
+                // Fetch companies
+                const companyResult = await fetchCompanies();
+                if (!companyResult.success) {
+                    setStatus(`Company data fetch failed: ${companyResult.error}`, 'error');
+                    return;
+                }
+                
+                // Transform and update data with company details
+                warehouseData = transformWarehouseData(warehouseResult.data, companyResult.data);
                 
                 // Re-render the map
                 initializeMap();
                 
-                setStatus(`Successfully loaded ${warehouseData.length} warehouses`, 'success');
+                setStatus(`Successfully loaded ${warehouseData.length} warehouses with company details`, 'success');
                 updateLastUpdated();
                 
                 // Clear success message after 3 seconds

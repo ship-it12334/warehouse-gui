@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Storage Visualization Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            max-width: 400px;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .categories-container {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .category-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .category-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .category-stats {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            padding: 20px;
+            min-height: 100px;
+        }
+        
+        .product {
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 8px;
+            font-size: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .product:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: #4CAF50;
+            z-index: 10;
+        }
+        
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+        
+        .product-weight {
+            font-size: 9px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .product-dimensions {
+            font-size: 8px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        
+        .product-volume {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(33, 150, 243, 0.8);
+            color: white;
+            font-size: 7px;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        
+        .product-quantity {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 8px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .product-movements {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+            font-size: 7px;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        
+        .product-code {
+            font-size: 7px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        /* Volume-based styling */
+        .product.micro {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border-color: #ef5350;
+            color: #c62828;
+            min-height: 40px;
+        }
+        
+        .product.small {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border-color: #ff9800;
+            color: #ef6c00;
+            min-height: 60px;
+        }
+        
+        .product.medium {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            border-color: #4caf50;
+            color: #2e7d32;
+            min-height: 80px;
+        }
+        
+        .product.large {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-color: #2196f3;
+            color: #1565c0;
+            min-height: 100px;
+        }
+        
+        .product.huge {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border-color: #9c27b0;
+            color: #6a1b9a;
+            min-height: 120px;
+        }
+        
+        .product.massive {
+            background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+            border-color: #e91e63;
+            color: #880e4f;
+            min-height: 140px;
+        }
+        
+        .product.gigantic {
+            background: linear-gradient(135deg, #f1f8e9 0%, #dcedc8 100%);
+            border-color: #8bc34a;
+            color: #558b2f;
+            min-height: 160px;
+        }
+        
+        .legend {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 5px;
+            }
+            
+            .product {
+                font-size: 8px;
+                padding: 4px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Product Storage Visualization Map</h1>
+        
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search products..." onkeyup="filterProducts()">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterByVolume('all')">All Volumes</button>
+                <button class="filter-btn" onclick="filterByVolume('micro')">Micro (&lt;100cm³)</button>
+                <button class="filter-btn" onclick="filterByVolume('small')">Small (100-500cm³)</button>
+                <button class="filter-btn" onclick="filterByVolume('medium')">Medium (500-2000cm³)</button>
+                <button class="filter-btn" onclick="filterByVolume('large')">Large (2000-10000cm³)</button>
+                <button class="filter-btn" onclick="filterByVolume('huge')">Huge (10000-30000cm³)</button>
+                <button class="filter-btn" onclick="filterByVolume('massive')">Massive (30000-50000cm³)</button>
+                <button class="filter-btn" onclick="filterByVolume('gigantic')">Gigantic (&gt;50000cm³)</button>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="total-products">0</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-quantity">0</div>
+                <div class="stat-label">Total Quantity</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-weight">0</div>
+                <div class="stat-label">Total Weight (kg)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-movements">0</div>
+                <div class="stat-label">Total Movements</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-volume">0</div>
+                <div class="stat-label">Total Volume (cm³)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="unique-codes">0</div>
+                <div class="stat-label">Unique Codes</div>
+            </div>
+        </div>
+        
+        <div class="categories-container" id="categories-container">
+        </div>
+        
+        <div class="legend">
+            <div class="legend-title">Product Size Categories</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);"></div>
+                    <span>Micro (&lt;100cm³) - Very small items</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);"></div>
+                    <span>Small (100-500cm³) - Small accessories</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);"></div>
+                    <span>Medium (500-2000cm³) - Medium items</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);"></div>
+                    <span>Large (2000-10000cm³) - Large products</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);"></div>
+                    <span>Huge (10000-30000cm³) - Very large items</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);"></div>
+                    <span>Massive (30000-50000cm³) - Massive items</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #f1f8e9 0%, #dcedc8 100%);"></div>
+                    <span>Gigantic (&gt;50000cm³) - Extremely large items</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Product data parsed from the input
+        const productData = [
+            {name: "Cordless Pressure Car Cleaner (free delivery)", quantity: 5, code: "S133", id: "00217130", weight: 20.00, dimensions: "6x18x9 cm", movements: 5, category: "Tools"},
+            {name: "Bushnell Binoculars", quantity: 47, code: "bshnl", id: "00213877", weight: 0.90, dimensions: "22x20x8 cm", movements: 47, category: "Electronics"},
+            {name: "Ultrasonic Aroma Humidifier", quantity: 1, code: "S100", id: "00200372", weight: 0.10, dimensions: "5x12x5 cm", movements: 0, category: "Home"},
+            {name: "LED Flashlight", quantity: 11, code: "S047", id: "00197188", weight: 0.10, dimensions: "5x3x10 cm", movements: 11, category: "Electronics"},
+            {name: "Varicose Veins Patch", quantity: 3, code: "L014", id: "00193055", weight: 0.03, dimensions: "12x16x2 cm", movements: 3, category: "Health"},
+            {name: "Water Purifier", quantity: 20, code: "S097", id: "00188248", weight: 0.30, dimensions: "14x15x7 cm", movements: 20, category: "Home"},
+            {name: "Shiatsu massager", quantity: 19, code: "shtsu", id: "00187970", weight: 1.25, dimensions: "40x17x15 cm", movements: 19, category: "Health"},
+            {name: "Έξυπνο Ρομπότ Καθαρισμού XFX006", quantity: 1, code: "47584267731161", id: "00186189", weight: 0.20, dimensions: "-", movements: 0, category: "Home"},
+            {name: "Kraft Royal 36 V Lagou", quantity: 1, code: "47561522020569", id: "00186188", weight: 0.20, dimensions: "-", movements: 0, category: "Tools"},
+            {name: "Sup Game Box", quantity: 2, code: "S132", id: "00184691", weight: 0.14, dimensions: "14x10x5 cm", movements: 2, category: "Electronics"},
+            {name: "Wall Mounted Electric Heater", quantity: 51, code: "S131", id: "00184653", weight: 1.40, dimensions: "43x19x13 cm", movements: 51, category: "Home"},
+            {name: "Smart Cloth Dryer", quantity: 102, code: "S130", id: "00184652", weight: 1.00, dimensions: "21x25x14 cm", movements: 102, category: "Home"},
+            {name: "Cordless Mini Grinder", quantity: 33, code: "S030", id: "00184193", weight: 1.00, dimensions: "27x14x9 cm", movements: 33, category: "Tools"},
+            {name: "Mini Printer", quantity: 17, code: "S094", id: "00183506", weight: 0.30, dimensions: "15x5x20 cm", movements: 17, category: "Electronics"},
+            {name: "KrafTRoyal Screwdriver", quantity: 44, code: "P002", id: "00179589", weight: 2.75, dimensions: "30x10x34 cm", movements: 44, category: "Tools"},
+            {name: "Electric thermo box for food", quantity: 1, code: "S060", id: "00147871", weight: 0.20, dimensions: "6x5x12 cm", movements: 1, category: "Kitchen"},
+            {name: "Spray Gun", quantity: 119, code: "S032", id: "00147870", weight: 0.30, dimensions: "12x10x15 cm", movements: 119, category: "Tools"},
+            {name: "Steam Pet Brush", quantity: 16, code: "S083", id: "00147869", weight: 0.20, dimensions: "4x3x10 cm", movements: 16, category: "Home"},
+            {name: "Speedy Chopper", quantity: 1, code: "schpr", id: "00147686", weight: 0.30, dimensions: "20x20x30 cm", movements: 0, category: "Kitchen"},
+            {name: "Hand Juicer", quantity: 6, code: "hjsr", id: "00145699", weight: 0.50, dimensions: "10x10x30 cm", movements: 6, category: "Kitchen"},
+            {name: "Royal Posture", quantity: 40, code: "rpstr", id: "00139628", weight: 0.25, dimensions: "10x4x12 cm", movements: 40, category: "Health"},
+            {name: "South Moon - GR", quantity: 9, code: "L019", id: "00139627", weight: 0.15, dimensions: "5x13x5 cm", movements: 9, category: "Fashion"},
+            {name: "Talking Parrot", quantity: 2, code: "Parrot", id: "00139626", weight: 0.10, dimensions: "6x5x12 cm", movements: 2, category: "Toys"},
+            {name: "Cordless Electric Grass Trimmer", quantity: 11, code: "S110", id: "00139625", weight: 0.15, dimensions: "10x5x16 cm", movements: 11, category: "Tools"},
+            {name: "Nail Gun kit", quantity: 37, code: "S027", id: "00119966", weight: 1.25, dimensions: "6x15x37 cm", movements: 37, category: "Tools"},
+            {name: "Sani Sticks", quantity: 1, code: "sanst", id: "00119965", weight: 0.05, dimensions: "1x22x14 cm", movements: 0, category: "Home"},
+            {name: "SolarChamp 300W", quantity: 1, code: "000762", id: "00119837", weight: 2.50, dimensions: "28x8x55 cm", movements: 0, category: "Electronics"},
+            {name: "HD Glasses", quantity: 1, code: "Hdgls", id: "00118140", weight: 0.10, dimensions: "15x5x3 cm", movements: 0, category: "Fashion"},
+            {name: "Pest Reject", quantity: 3, code: "pestr", id: "00117093", weight: 0.10, dimensions: "5x4x10 cm", movements: 3, category: "Home"},
+            {name: "Luna Sleep Patches", quantity: 27, code: "L013", id: "00117012", weight: 0.10, dimensions: "5x1x10 cm", movements: 27, category: "Health"},
+            {name: "Donkey Milk", quantity: 73, code: "S129", id: "00116925", weight: 0.10, dimensions: "15x5x15 cm", movements: 73, category: "Beauty"},
+            {name: "Eelhoe Hair Oil", quantity: 123, code: "L015", id: "00073941", weight: 0.25, dimensions: "15x5x5 cm", movements: 123, category: "Beauty"},
+            {name: "Vacuum Ear Cleaner", quantity: 3, code: "Earc", id: "00073882", weight: 0.20, dimensions: "15x10x5 cm", movements: 3, category: "Health"},
+            {name: "Magic Hose", quantity: 317, code: "S111", id: "00073881", weight: 0.30, dimensions: "30x30x10 cm", movements: 317, category: "Home"},
+            {name: "Kinoki Detox Patches", quantity: 82, code: "Kinoki", id: "00068398", weight: 0.15, dimensions: "20x10x2 cm", movements: 82, category: "Health"},
+            {name: "Dial Vision", quantity: 148, code: "dialvis", id: "00064347", weight: 0.05, dimensions: "8x3x15 cm", movements: 148, category: "Health"},
+            {name: "In Styler 3 in 1", quantity: 18, code: "instyler", id: "00062819", weight: 0.70, dimensions: "15x35x8 cm", movements: 18, category: "Beauty"},
+            {name: "Professional Steam Straightener", quantity: 5, code: "pss", id: "00062400", weight: 0.50, dimensions: "35x10x10 cm", movements: 5, category: "Beauty"},
+            {name: "Microtouch Solo", quantity: 498, code: "msolo", id: "00061334", weight: 0.15, dimensions: "21x13x3 cm", movements: 498, category: "Beauty"},
+            {name: "Arctic Air", quantity: 266, code: "arcticair", id: "00061257", weight: 0.75, dimensions: "17x18x15 cm", movements: 266, category: "Home"},
+            {name: "Smart Clean Robot", quantity: 46, code: "S079", id: "00061254", weight: 0.80, dimensions: "27x27x8 cm", movements: 46, category: "Home"},
+            {name: "Air Fryer", quantity: 32, code: "af28", id: "00058295", weight: 2.00, dimensions: "30x24x24 cm", movements: 32, category: "Kitchen"},
+            {name: "EMS foot massager", quantity: 18, code: "S061", id: "00051568", weight: 0.30, dimensions: "35x15x3 cm", movements: 18, category: "Health"},
+            {name: "Cordless Grass Trimmer", quantity: 219, code: "S008", id: "00051461", weight: 0.70, dimensions: "37x15x7 cm", movements: 219, category: "Tools"},
+            {name: "Slice chopper", quantity: 1, code: "Slicechop", id: "00051080", weight: 0.50, dimensions: "20x20x30 cm", movements: 0, category: "Kitchen"},
+            {name: "Digital HDTV Antenna", quantity: 130, code: "S007", id: "00033453", weight: 0.25, dimensions: "7x13x5 cm", movements: 130, category: "Electronics"},
+            {name: "Electric Cordless Pruning Shears", quantity: 57, code: "S031", id: "00033095", weight: 1.40, dimensions: "43x19x13 cm", movements: 57, category: "Tools"},
+            {name: "Screwdriver", quantity: 361, code: "P001", id: "00029514", weight: 2.75, dimensions: "34x30x9 cm", movements: 361, category: "Tools"},
+            {name: "Led Solar Lamp 180W", quantity: 117, code: "000761", id: "00029382", weight: 1.60, dimensions: "6x21x46 cm", movements: 117, category: "Electronics"},
+            {name: "HD CAM Mirror with 2 camers", quantity: 73, code: "HDcam2camers", id: "00029381", weight: 0.50, dimensions: "3x10x20 cm", movements: 73, category: "Electronics"},
+            {name: "Mini vacuum cleaner", quantity: 319, code: "S062", id: "00029321", weight: 0.60, dimensions: "10x15x20 cm", movements: 319, category: "Home"},
+            {name: "DV КАМЕРА SQ11", quantity: 62, code: "SQ11", id: "00028286", weight: 0.10, dimensions: "1x1x1 cm", movements: 62, category: "Electronics"},
+            {name: "OnePower Readers", quantity: 458, code: "OnePower", id: "00028285", weight: 0.20, dimensions: "5x10x12 cm", movements: 458, category: "Health"},
+            {name: "Mystery Box", quantity: 672, code: "myst", id: "00028284", weight: 0.50, dimensions: "34x15x50 cm", movements: 672, category: "Misc"},
+            {name: "Kitchen Set 11 pcs", quantity: 1, code: "kit11", id: "00028283", weight: 0.50, dimensions: "30x10x40 cm", movements: 0, category: "Kitchen"},
+            {name: "Golf Toilet Brush", quantity: 10, code: "golf-2", id: "00028282", weight: 0.50, dimensions: "3x3x40 cm", movements: 10, category: "Home"},
+            {name: "Fascial Gun Massager", quantity: 1, code: "fas720", id: "00028281", weight: 0.50, dimensions: "22x7x32 cm", movements: 1, category: "Health"},
+            {name: "Smart Watch DZ09", quantity: 111, code: "DZ09", id: "00028280", weight: 0.50, dimensions: "10x8x10 cm", movements: 111, category: "Electronics"},
+            {name: "Cordless Chainsaw 6 inches", quantity: 1, code: "CC6", id: "00028278", weight: 2.10, dimensions: "19x35x10 cm", movements: 0, category: "Tools"},
+            {name: "Cordless Chainsaw 12 inches", quantity: 1, code: "CC12", id: "00028277", weight: 3.90, dimensions: "22x40x13 cm", movements: 0, category: "Tools"},
+            {name: "Slim and Lift Bra 3 in 1", quantity: 1, code: "bra3in1", id: "00028276", weight: 0.10, dimensions: "10x10x5 cm", movements: 0, category: "Fashion"},
+            {name: "Air Fryer 8l Silver Crest", quantity: 1, code: "AIRFR8L", id: "00028275", weight: 4.70, dimensions: "35x40x35 cm", movements: 0, category: "Kitchen"},
+            {name: "DRONE 998PRO", quantity: 834, code: "998PRO", id: "00028274", weight: 0.50, dimensions: "5x20x20 cm", movements: 834, category: "Electronics"},
+            {name: "CAR for Magic Tracks", quantity: 1, code: "827827", id: "00028273", weight: 0.05, dimensions: "5x5x5 cm", movements: 0, category: "Toys"},
+            {name: "Cordless Chainsaw 4 inches", quantity: 43, code: "7777666", id: "00028272", weight: 0.50, dimensions: "1x1x1 cm", movements: 43, category: "Tools"},
+            {name: "Solar Induction Lamp", quantity: 18, code: "6529", id: "00028271", weight: 0.50, dimensions: "1x1x1 cm", movements: 18, category: "Electronics"},
+            {name: "Nicer Dicer Quick 5 in 1", quantity: 1, code: "585858", id: "00028270", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Kitchen"},
+            {name: "HAIDI - Hair straightener", quantity: 1, code: "33", id: "00028269", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Beauty"},
+            {name: "Multi Cutter", quantity: 1, code: "244", id: "00028268", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Tools"},
+            {name: "Flame Heater", quantity: 4, code: "1864", id: "00028267", weight: 0.50, dimensions: "1x1x1 cm", movements: 4, category: "Home"},
+            {name: "Mini Drone", quantity: 7, code: "1509", id: "00028266", weight: 0.50, dimensions: "1x1x1 cm", movements: 7, category: "Electronics"},
+            {name: "Outdoor Wifi Camera", quantity: 3, code: "12451", id: "00028265", weight: 0.50, dimensions: "1x1x1 cm", movements: 3, category: "Electronics"},
+            {name: "Floating Globus", quantity: 1, code: "1241", id: "00028264", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Home"},
+            {name: "Pest Repulser", quantity: 3, code: "1018", id: "00028263", weight: 0.50, dimensions: "1x1x1 cm", movements: 3, category: "Home"},
+            {name: "Magic Glow Blanket", quantity: 5, code: "006512", id: "00028262", weight: 0.50, dimensions: "1x1x1 cm", movements: 5, category: "Home"},
+            {name: "Flavorwave Turbo Oven", quantity: 2, code: "002395", id: "00028261", weight: 5.05, dimensions: "36x36x23 cm", movements: 2, category: "Kitchen"},
+            {name: "Air Fryer", quantity: 1, code: "002188", id: "00028260", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Kitchen"},
+            {name: "Electric Ear Cleaner", quantity: 1, code: "001589", id: "00028259", weight: 0.50, dimensions: "1x1x1 cm", movements: 1, category: "Health"},
+            {name: "Hand Juicer", quantity: 1, code: "001520", id: "00028258", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Kitchen"},
+            {name: "Magnetic Back Corrector", quantity: 17, code: "000867", id: "00028257", weight: 0.50, dimensions: "1x1x1 cm", movements: 17, category: "Health"},
+            {name: "Solar Lamp Stand", quantity: 1, code: "000786", id: "00028256", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Electronics"},
+            {name: "Patio Mistcooling Kit", quantity: 4, code: "000721", id: "00028255", weight: 0.50, dimensions: "1x1x1 cm", movements: 4, category: "Home"},
+            {name: "Portable Blender", quantity: 1, code: "000676", id: "00028254", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Kitchen"},
+            {name: "Sani Sticks", quantity: 1, code: "000255", id: "00028253", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Home"},
+            {name: "Mini Press HAIDI HD-002", quantity: 1, code: "000251", id: "00028252", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Beauty"},
+            {name: "Steam Brush", quantity: 1, code: "000240", id: "00028251", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Home"},
+            {name: "Flawless Brows", quantity: 1, code: "000239", id: "00028250", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Beauty"},
+            {name: "Magic Tracks", quantity: 1, code: "000203", id: "00028249", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Toys"},
+            {name: "Hurricane Spin Scrubber", quantity: 10, code: "000144", id: "00028248", weight: 0.50, dimensions: "35x15x10 cm", movements: 10, category: "Home"},
+            {name: "Revoflex Xtreme", quantity: 1, code: "000057", id: "00028247", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Health"},
+            {name: "Air Cooler", quantity: 1, code: "000044", id: "00028246", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Home"},
+            {name: "Tree Dazzler", quantity: 3, code: "000036", id: "00028245", weight: 0.50, dimensions: "1x1x1 cm", movements: 3, category: "Home"},
+            {name: "Laser Lamp", quantity: 215, code: "000031", id: "00028244", weight: 0.50, dimensions: "1x1x1 cm", movements: 215, category: "Electronics"},
+            {name: "Sweeprobot", quantity: 1, code: "000030", id: "00028243", weight: 0.50, dimensions: "1x1x1 cm", movements: 0, category: "Home"},
+            {name: "Handy Heater", quantity: 39, code: "000025", id: "00028242", weight: 0.50, dimensions: "1x1x1 cm", movements: 39, category: "Home"},
+            {name: "Flawless", quantity: 169, code: "000013", id: "00028241", weight: 0.50, dimensions: "1x1x1 cm", movements: 169, category: "Beauty"}
+        ];
+
+        let currentFilter = 'all';
+        let searchTerm = '';
+
+        // Calculate volume from dimensions
+        function calculateVolume(dimensions) {
+            if (!dimensions || dimensions === '-') {
+                return 0; // Default for unknown dimensions
+            }
+            
+            // Parse dimensions like "6x18x9 cm" or "30x24x24 cm"
+            const matches = dimensions.match(/(\d+)x(\d+)x(\d+)/);
+            if (matches) {
+                const length = parseFloat(matches[1]);
+                const width = parseFloat(matches[2]);
+                const height = parseFloat(matches[3]);
+                const volume = length * width * height; // Volume in cm³
+                console.log(`Dimensions: ${dimensions} -> Volume: ${volume} cm³`);
+                return volume;
+            }
+            
+            console.log(`Invalid dimensions: ${dimensions}`);
+            return 0; // Default for invalid format
+        }
+
+        function getVolumeCategory(volume) {
+            if (volume < 100) return 'micro';
+            if (volume < 500) return 'small';
+            if (volume < 2000) return 'medium';
+            if (volume < 10000) return 'large';
+            if (volume < 30000) return 'huge';
+            if (volume < 50000) return 'massive';
+            return 'gigantic';
+        }
+
+        function groupProductsByCategory() {
+            const categories = {};
+            
+            productData.forEach(product => {
+                // Calculate volume for each product
+                product.volume = calculateVolume(product.dimensions);
+                product.volumeCategory = getVolumeCategory(product.volume);
+                
+                // Debug logging for specific products
+                if (product.code === 'bshnl' || product.code === '998PRO' || product.code === 'myst') {
+                    console.log(`Product: ${product.name}`);
+                    console.log(`Dimensions: ${product.dimensions}`);
+                    console.log(`Unit Volume: ${product.volume} cm³`);
+                    console.log(`Quantity: ${product.quantity}`);
+                    console.log(`Total Volume: ${product.volume * product.quantity} cm³`);
+                    console.log('---');
+                }
+                
+                if (!categories[product.category]) {
+                    categories[product.category] = {
+                        name: product.category,
+                        products: [],
+                        totalQuantity: 0,
+                        totalWeight: 0,
+                        totalVolume: 0,
+                        totalMovements: 0
+                    };
+                }
+                categories[product.category].products.push(product);
+                categories[product.category].totalQuantity += product.quantity;
+                categories[product.category].totalWeight += product.weight * product.quantity;
+                categories[product.category].totalVolume += product.volume * product.quantity;
+                categories[product.category].totalMovements += product.movements;
+            });
+            
+            // Log total volume calculation
+            const grandTotal = Object.values(categories).reduce((sum, cat) => sum + cat.totalVolume, 0);
+            console.log(`Grand Total Volume: ${grandTotal} cm³`);
+            
+            return categories;
+        }
+
+        function createProductElement(product) {
+            const div = document.createElement('div');
+            const volumeCategory = getVolumeCategory(product.volume);
+            
+            div.className = `product ${volumeCategory}`;
+            
+            const shortName = product.name.length > 30 ? 
+                product.name.substring(0, 27) + '...' : product.name;
+            
+            const unitVolumeText = product.volume > 0 ? `${product.volume.toLocaleString()} cm³ (${(product.volume / 1000000).toFixed(4)} m³)` : 'N/A';
+            const totalVolumeText = product.volume > 0 ? `${(product.volume * product.quantity).toLocaleString()} cm³ (${((product.volume * product.quantity) / 1000000).toFixed(4)} m³)` : 'N/A';
+            
+            div.innerHTML = `
+                <div class="product-name">${shortName}</div>
+                <div class="product-weight">${product.weight.toFixed(2)} kg</div>
+                <div class="product-dimensions">${product.dimensions}</div>
+                <div class="product-code">${product.code}</div>
+                <div class="product-quantity">${product.quantity}</div>
+                <div class="product-movements">${product.movements}</div>
+                <div class="product-volume">${totalVolumeText}</div>
+            `;
+            
+            div.title = `${product.name}\nWeight: ${product.weight.toFixed(2)} kg\nDimensions: ${product.dimensions}\nUnit Volume: ${unitVolumeText}\nTotal Volume: ${totalVolumeText}\nQuantity: ${product.quantity}\nMovements: ${product.movements}\nCode: ${product.code}\nID: ${product.id}`;
+            
+            return div;
+        }
+
+        function createCategorySection(category, categoryName) {
+            const section = document.createElement('div');
+            section.className = 'category-section';
+            
+            const header = document.createElement('div');
+            header.className = 'category-header';
+            header.innerHTML = `
+                <span>${categoryName}</span>
+                <span class="category-stats">${category.products.length} products | ${category.totalQuantity} units | ${category.totalWeight.toFixed(1)} kg | ${category.totalVolume.toLocaleString()} cm³ (${(category.totalVolume / 1000000).toFixed(4)} m³) | ${category.totalMovements} movements</span>
+            `;
+            
+            const grid = document.createElement('div');
+            grid.className = 'products-grid';
+            
+            let hasVisibleProducts = false;
+            category.products.forEach(product => {
+                const matchesSearch = searchTerm === '' || 
+                    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    product.category.toLowerCase().includes(searchTerm.toLowerCase());
+                
+                const matchesVolume = currentFilter === 'all' || getVolumeCategory(product.volume) === currentFilter;
+                
+                if (matchesSearch && matchesVolume) {
+                    grid.appendChild(createProductElement(product));
+                    hasVisibleProducts = true;
+                }
+            });
+            
+            if (!hasVisibleProducts) {
+                grid.innerHTML = '<div class="no-results">No products match the current filters</div>';
+            }
+            
+            section.appendChild(header);
+            section.appendChild(grid);
+            
+            return section;
+        }
+
+        function updateStats() {
+            const filteredProducts = productData.filter(product => {
+                const matchesSearch = searchTerm === '' || 
+                    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    product.category.toLowerCase().includes(searchTerm.toLowerCase());
+                
+                const matchesVolume = currentFilter === 'all' || getVolumeCategory(product.volume) === currentFilter;
+                
+                return matchesSearch && matchesVolume;
+            });
+            
+            const totalProducts = filteredProducts.length;
+            const totalQuantity = filteredProducts.reduce((sum, p) => sum + p.quantity, 0);
+            const totalWeight = filteredProducts.reduce((sum, p) => sum + (p.weight * p.quantity), 0);
+            const totalVolume = filteredProducts.reduce((sum, p) => sum + (p.volume * p.quantity), 0);
+            const totalMovements = filteredProducts.reduce((sum, p) => sum + p.movements, 0);
+            const uniqueCodes = new Set(filteredProducts.map(p => p.code)).size;
+            
+            document.getElementById('total-products').textContent = totalProducts;
+            document.getElementById('total-quantity').textContent = totalQuantity;
+            document.getElementById('total-weight').textContent = totalWeight.toFixed(1);
+            document.getElementById('total-volume').textContent = `${totalVolume.toLocaleString()} cm³ (${(totalVolume / 1000000).toFixed(4)} m³)`;
+            document.getElementById('total-movements').textContent = totalMovements;
+            document.getElementById('unique-codes').textContent = uniqueCodes;
+        }
+
+        function filterProducts() {
+            searchTerm = document.getElementById('search-input').value;
+            renderMap();
+        }
+
+        function filterByVolume(volume) {
+            currentFilter = volume;
+            
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderMap();
+        }
+
+        function renderMap() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
+            
+            const categories = groupProductsByCategory();
+            const sortedCategoryNames = Object.keys(categories).sort();
+            
+            sortedCategoryNames.forEach(categoryName => {
+                const categorySection = createCategorySection(categories[categoryName], categoryName);
+                container.appendChild(categorySection);
+            });
+            
+            updateStats();
+        }
+
+        // Initialize the map when the page loads
+        document.addEventListener('DOMContentLoaded', renderMap);
+    </script>
+</body>
+</html>
