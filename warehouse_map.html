@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Storage Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            font-size: 14px;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status.loading {
+            color: #007bff;
+        }
+        
+        .status.error {
+            color: #dc3545;
+        }
+        
+        .status.success {
+            color: #28a745;
+        }
+        
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .last-updated {
+            font-size: 12px;
+            color: #6c757d;
+            margin-left: auto;
+        }
+        
+        .hub-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .hub-stats {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .map-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: #fafafa;
+        }
+        
+        .warehouse {
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 8px;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .warehouse:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: #4CAF50;
+        }
+        
+        .warehouse.zero-storage {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border-color: #ef5350;
+            color: #c62828;
+            min-height: 60px;
+            min-width: 100px;
+        }
+        
+        .warehouse.small-storage {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border-color: #ff9800;
+            color: #e65100;
+        }
+        
+        .warehouse.medium-storage {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            border-color: #4CAF50;
+            color: #2e7d32;
+        }
+        
+        .warehouse.large-storage {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-color: #2196F3;
+            color: #1565C0;
+        }
+        
+        .warehouse.xlarge-storage {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border-color: #9C27B0;
+            color: #6a1b9a;
+        }
+        
+        .storage-info {
+            font-size: 9px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+        
+        .legend {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .legend h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 6px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Warehouse Storage Visualization Map</h1>
+        
+        <div class="controls">
+            <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">
+                🔄 Refresh Data
+            </button>
+            <div class="status" id="status">
+                <span id="status-text">Ready</span>
+            </div>
+            <div class="last-updated" id="last-updated">
+                Never updated
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="total-warehouses">0</div>
+                <div class="stat-label">Total Warehouses</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="zero-storage">0</div>
+                <div class="stat-label">Zero Storage</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="active-storage">0</div>
+                <div class="stat-label">Active Storage</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-storage">0</div>
+                <div class="stat-label">Total Storage (m³)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-hubs">0</div>
+                <div class="stat-label">Total Hubs</div>
+            </div>
+        </div>
+        
+        <div id="hubs-container">
+        </div>
+        
+        <div class="legend">
+            <h3>Storage Size Legend</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);"></div>
+                    <span>0 m³ (No Storage)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);"></div>
+                    <span>0.001 - 1 m³ (Small)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);"></div>
+                    <span>1 - 10 m³ (Medium)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);"></div>
+                    <span>10 - 50 m³ (Large)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);"></div>
+                    <span>50+ m³ (Extra Large)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIG =====
+        const TOKEN = "461818415";
+        const MOBILE_SECRET = "473821fjisak8592";
+        const BASE_URL = "https://api.nextlevel.delivery";
+        // ==================
+        
+        let currentUserKey = null;
+        let warehouseData = [];
+        
+        // API Functions
+        async function getAuthKey() {
+            const loginUrl = `${BASE_URL}/admin/login/qr`;
+            const headers = {
+                "accept": "*/*",
+                "content-type": "application/json",
+                "origin": "https://admin.nextlevel.delivery",
+                "x-mobile-secret": MOBILE_SECRET,
+            };
+            const data = { token: TOKEN };
+
+            try {
+                const response = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentUserKey = result.key;
+                    return { success: true, key: result.key };
+                } else {
+                    return { success: false, error: "Login response success=false" };
+                }
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        async function fetchWarehouses() {
+            if (!currentUserKey) {
+                throw new Error('Not authenticated');
+            }
+            
+            const url = `${BASE_URL}/admin/fulfillment-warehouses`;
+            const headers = {
+                "accept": "application/json, text/plain, */*",
+                "origin": "https://admin.nextlevel.delivery",
+                "x-user-key": currentUserKey
+            };
+            
+            try {
+                const response = await fetch(url, { headers });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return { success: true, data: data };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // Transform API data to our format
+        function transformWarehouseData(apiData) {
+            return apiData.map(warehouse => {
+                const latestStorage = warehouse.storages && warehouse.storages.length > 0 
+                    ? parseFloat(warehouse.storages[0].storage) 
+                    : 0;
+                
+                return {
+                    name: warehouse.name,
+                    hub: warehouse.hub ? warehouse.hub.name : 'Unknown Hub',
+                    storage: latestStorage,
+                    id: warehouse.id,
+                    email: warehouse.email,
+                    isActive: warehouse.is_active,
+                    isVirtual: warehouse.is_virtual,
+                    companies: warehouse.companies || [],
+                    raw: warehouse
+                };
+            });
+        }
+
+        function getStorageCategory(storage) {
+            if (storage === 0) return 'zero-storage';
+            if (storage < 1) return 'small-storage';
+            if (storage < 10) return 'medium-storage';
+            if (storage < 50) return 'large-storage';
+            return 'xlarge-storage';
+        }
+
+        function getWarehouseSize(storage) {
+            if (storage === 0) return { width: 100, height: 60 };
+            if (storage < 0.1) return { width: 110, height: 70 };
+            if (storage < 1) return { width: 120, height: 80 };
+            if (storage < 5) return { width: 140, height: 90 };
+            if (storage < 10) return { width: 160, height: 100 };
+            if (storage < 25) return { width: 180, height: 110 };
+            if (storage < 50) return { width: 200, height: 120 };
+            if (storage < 100) return { width: 220, height: 130 };
+            return { width: 240, height: 140 };
+        }
+
+        function createWarehouseElement(warehouse, index) {
+            const div = document.createElement('div');
+            const category = getStorageCategory(warehouse.storage);
+            const size = getWarehouseSize(warehouse.storage);
+            
+            div.className = `warehouse ${category}`;
+            div.style.width = `${size.width}px`;
+            div.style.height = `${size.height}px`;
+            div.style.gridColumn = `span ${Math.ceil(size.width / 120)}`;
+            
+            const shortName = warehouse.name.length > 30 ? 
+                warehouse.name.substring(0, 27) + '...' : warehouse.name;
+            
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${shortName}</div>
+                    <div class="storage-info">${warehouse.storage.toFixed(3)} m³</div>
+                </div>
+            `;
+            
+            div.title = `${warehouse.name}\nStorage: ${warehouse.storage.toFixed(3)} m³`;
+            
+            return div;
+        }
+
+        // UI Functions
+        function setStatus(message, type = 'normal') {
+            const statusEl = document.getElementById('status');
+            const statusTextEl = document.getElementById('status-text');
+            const refreshBtn = document.getElementById('refresh-btn');
+            
+            statusTextEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            
+            if (type === 'loading') {
+                statusTextEl.innerHTML = '<div class="loading-spinner"></div> ' + message;
+                refreshBtn.disabled = true;
+            } else {
+                refreshBtn.disabled = false;
+            }
+        }
+        
+        function updateLastUpdated() {
+            const now = new Date();
+            const timeString = now.toLocaleString();
+            document.getElementById('last-updated').textContent = `Last updated: ${timeString}`;
+        }
+        
+        // Main refresh function
+        async function refreshData() {
+            try {
+                setStatus('Authenticating...', 'loading');
+                
+                // Authenticate
+                const authResult = await getAuthKey();
+                if (!authResult.success) {
+                    setStatus(`Authentication failed: ${authResult.error}`, 'error');
+                    return;
+                }
+                
+                setStatus('Fetching warehouse data...', 'loading');
+                
+                // Fetch warehouses
+                const warehouseResult = await fetchWarehouses();
+                if (!warehouseResult.success) {
+                    setStatus(`Data fetch failed: ${warehouseResult.error}`, 'error');
+                    return;
+                }
+                
+                // Transform and update data
+                warehouseData = transformWarehouseData(warehouseResult.data);
+                
+                // Re-render the map
+                initializeMap();
+                
+                setStatus(`Successfully loaded ${warehouseData.length} warehouses`, 'success');
+                updateLastUpdated();
+                
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                    setStatus('Ready', 'normal');
+                }, 3000);
+                
+            } catch (error) {
+                setStatus(`Unexpected error: ${error.message}`, 'error');
+                console.error('Refresh error:', error);
+            }
+        }
+
+        function groupWarehousesByHub() {
+            const hubs = {};
+            
+            warehouseData.forEach(warehouse => {
+                const hubName = warehouse.hub || 'Unknown Hub';
+                if (!hubs[hubName]) {
+                    hubs[hubName] = {
+                        name: hubName,
+                        warehouses: [],
+                        totalStorage: 0,
+                        zeroStorage: 0,
+                        activeStorage: 0
+                    };
+                }
+                
+                hubs[hubName].warehouses.push(warehouse);
+                hubs[hubName].totalStorage += warehouse.storage;
+                
+                if (warehouse.storage === 0) {
+                    hubs[hubName].zeroStorage++;
+                } else {
+                    hubs[hubName].activeStorage++;
+                }
+            });
+            
+            return hubs;
+        }
+
+        function createHubSection(hubData, hubName) {
+            const section = document.createElement('div');
+            section.className = 'hub-section';
+            
+            const header = document.createElement('div');
+            header.className = 'hub-header';
+            header.innerHTML = `
+                <span>${hubName}</span>
+                <span class="hub-stats">
+                    ${hubData.warehouses.length} warehouses | 
+                    ${hubData.zeroStorage} empty | 
+                    ${hubData.totalStorage.toFixed(1)} m³ total
+                </span>
+            `;
+            
+            const mapContainer = document.createElement('div');
+            mapContainer.className = 'map-container';
+            
+            // Sort warehouses by storage size (descending) within each hub
+            const sortedWarehouses = [...hubData.warehouses].sort((a, b) => b.storage - a.storage);
+            
+            sortedWarehouses.forEach((warehouse, index) => {
+                const element = createWarehouseElement(warehouse, index);
+                mapContainer.appendChild(element);
+            });
+            
+            section.appendChild(header);
+            section.appendChild(mapContainer);
+            
+            return section;
+        }
+
+        function updateStats() {
+            const totalWarehouses = warehouseData.length;
+            const zeroStorage = warehouseData.filter(w => w.storage === 0).length;
+            const activeStorage = totalWarehouses - zeroStorage;
+            const totalStorage = warehouseData.reduce((sum, w) => sum + w.storage, 0);
+            const hubs = groupWarehousesByHub();
+            const totalHubs = Object.keys(hubs).length;
+            
+            document.getElementById('total-warehouses').textContent = totalWarehouses;
+            document.getElementById('zero-storage').textContent = zeroStorage;
+            document.getElementById('active-storage').textContent = activeStorage;
+            document.getElementById('total-storage').textContent = totalStorage.toFixed(1);
+            document.getElementById('total-hubs').textContent = totalHubs;
+        }
+
+        function initializeMap() {
+            const hubsContainer = document.getElementById('hubs-container');
+            const hubs = groupWarehousesByHub();
+            
+            // Sort hubs by total storage (descending) for better organization
+            const sortedHubNames = Object.keys(hubs).sort((a, b) => hubs[b].totalStorage - hubs[a].totalStorage);
+            
+            sortedHubNames.forEach(hubName => {
+                const hubSection = createHubSection(hubs[hubName], hubName);
+                hubsContainer.appendChild(hubSection);
+            });
+            
+            updateStats();
+        }
+
+        // Initialize the map when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Auto-refresh on page load
+            refreshData();
+        });
+    </script>
+</body>
+</html>
